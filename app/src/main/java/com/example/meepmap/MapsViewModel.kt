@@ -1,23 +1,30 @@
 package com.example.meepmap
 
-import Resource
+import com.example.meepmap.model.Resource
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import com.example.meepmap.repository.ResourcesRepository
+import com.google.android.gms.maps.model.LatLng
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+
 
 class MapsViewModel(application: Application) : AndroidViewModel(application) {
-    private val resources: MutableLiveData<List<Resource>> by lazy {
-        MutableLiveData<List<Resource>>().also {
-            loadUsers()
-        }
-    }
+    private var resources: LiveData<List<Resource>?>? = null
+    private var resourceRespository: ResourcesRepository =
+        ResourcesRepository.getInstance(application)
 
-    fun getUsers(): LiveData<List<Resource>> {
+    fun loadResources(): LiveData<List<Resource>?>? {
+        if (resources == null) {
+            resources =
+                resourceRespository.getResources(Constants.LOWER_LEFT, Constants.UPPER_RIGHT)
+        }
         return resources
     }
 
-    private fun loadUsers() {
-        // Do an asynchronous operation to fetch users.
+    fun updateResources(lowerLeft: LatLng, upperRight: LatLng) {
+        GlobalScope.launch { resourceRespository.updateValueFromNetwork(lowerLeft, upperRight) }
     }
+
 }

@@ -1,17 +1,20 @@
 package com.example.meepmap
 
-import Resource
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.viewModels
-import androidx.lifecycle.observe
-
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.Observer
+import com.example.meepmap.model.Resource
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.android.gms.maps.model.LatLngBounds
 import com.google.android.gms.maps.model.MarkerOptions
+
 
 class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
 
@@ -39,17 +42,41 @@ class MapsActivity : AppCompatActivity(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         mMap = googleMap
+        mMap.setOnMapLoadedCallback {
+            val bounds = LatLngBounds(Constants.LOWER_LEFT, Constants.UPPER_RIGHT)
+            mMap.moveCamera(CameraUpdateFactory.newLatLngBounds(bounds, 8))
+        }
+        mMap.setOnCameraIdleListener {
+            mMap.clear()
+            val bounds = mMap.projection.visibleRegion
+            viewModel.updateResources(bounds.nearLeft, bounds.farRight)
+        }
 
-        // Add a marker in Sydney and move the camera
-        val sydney = LatLng(-34.0, 151.0)
-        mMap.addMarker(MarkerOptions().position(sydney).title("Marker in Sydney"))
-        mMap.moveCamera(CameraUpdateFactory.newLatLng(sydney))
-        viewModel.getUsers().observe(this) {
+        viewModel.loadResources()?.observe(this, Observer {
             populateMap(it)
+        })
+    }
+
+    private fun populateMap(resources: List<Resource?>?) {
+        resources?.forEach {
+            Log.d("MapsActivity", "Resource: ${it}")
+            it?.apply {
+                val marker: MarkerOptions = MarkerOptions()
+                marker.position(LatLng(it.lat, it.lon))
+                marker.title(it.name)
+                marker.icon(BitmapDescriptorFactory.defaultMarker(getColorForZoneId(it.companyZoneId)))
+                mMap.addMarker(marker)
+            }
         }
     }
 
-    fun populateMap(resources: List<Resource>){
-
+    fun getColorForZoneId(zoneId: Int): Float{
+        BitmapDescriptorFactory.HUE_AZURE
+        return when(zoneId){
+            Constants.ZONE_ID_BLUE -> BitmapDescriptorFactory.HUE_BLUE
+            Constants.ZONE_ID_GREEN -> BitmapDescriptorFactory.HUE_GREEN
+            Constants.ZONE_ID_PURPLE -> BitmapDescriptorFactory.HUE_MAGENTA
+            else  -> BitmapDescriptorFactory.HUE_RED
+        }
     }
 }
